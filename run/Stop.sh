@@ -1,0 +1,1 @@
+tmux ls | grep -sq daycare && tmux kill-session -t daycare && systemctl stop mongod

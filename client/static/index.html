@@ -1,0 +1,154 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="apple-touch-icon" sizes="57x57" href="/ico/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/ico/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/ico/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/ico/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/ico/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/ico/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/ico/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/ico/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/ico/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/ico/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/ico/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/ico/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/ico/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="msapplication-TileColor" content="#d9f1f7">
+    <meta name="msapplication-TileImage" content="/ico/ms-icon-144x144.png">
+    <meta name="theme-color" content="#d9f1f7">
+    <title>usiwatch</title>
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"> -->
+    <script src="main.js"></script>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
+        integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Roboto:400,400i,600,800|Roboto+Condensed:400|Roboto+Slab:700&display=swap');
+    </style>
+    <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+    <script>
+        function loadFromStorage() {
+            console.log('loading from storage');
+            let token = JSON.parse(localStorage.getItem('daycare-token'));
+            if (!['', null].includes(token)) {
+                return token
+            } else {
+                return "";
+            }
+        }
+
+        function keydown(e, app) {
+            if ((e.keyCode == 10 || e.keyCode == 13) && e.ctrlKey) {
+                app.ports.ctrlEnterPort.send(null);
+            }
+        }
+
+        function sendTab() {
+            var event = new KeyBoardEvent('keydown', {
+                'view': window,
+                'bubbles': true,
+                'cancelable': true
+            });
+            var cb = document.querySelector('input[type=submit][name=btnK]');
+            var canceled = !cb.dispatchEvent(event);
+            if (canceled) {
+                // preventDefault was called and the event cancelled
+            } else {
+                // insert your event-logic here...
+            }
+        }
+
+        var app = Elm.Home.init();
+
+        try {
+            app.ports.editingPort.subscribe(function () {
+                // alert("start editing")
+                requestAnimationFrame(() => {
+                    let list = document.getElementsByTagName("textarea");
+                    for (let textarea of list) {
+                        textarea.addEventListener("keydown", function () {
+                            keydown(event, app);
+                        });
+                    }
+
+                    list = document.getElementsByTagName("input");
+                    for (let input of list) {
+                        input.addEventListener("keydown", function () {
+                            keydown(event, app);
+                        });
+                    }
+                });
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
+        let token = JSON.parse(localStorage.getItem('daycare-token'));
+
+        try {
+            app.ports.saveTokenLogin.subscribe(function (token) {
+                if (!['', null].includes(token)) {
+                    localStorage.setItem('daycare-token', JSON.stringify(token));
+                }
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            app.ports.saveTokenPlanner.subscribe(function (token) {
+                if (!['', null].includes(token)) {
+                    localStorage.setItem('daycare-token', JSON.stringify(token));
+                }
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            app.ports.loadToken.subscribe(function () {
+                if (!['', null].includes(token)) {
+                    app.ports.loadedTokenLogin.send(loadFromStorage());
+                    app.ports.loadedTokenPlanner.send(loadFromStorage());
+                }
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
+        try {
+            app.ports.logoutPort.subscribe(function () {
+                localStorage.setItem('daycare-token', JSON.stringify(''));
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
+
+        if (token !== null && token !== "") {
+            app.ports.loadedTokenLogin.send(loadFromStorage());
+            app.ports.loadedTokenPlanner.send(loadFromStorage());
+        }
+
+        window.onscroll = function () {
+            try {
+                app.ports.scrolledBody.send(null);
+            } catch (e) {
+
+            }
+        }
+
+
+		// function saveToStorage(key, value)
+    </script>
+</body>
+
+</html>

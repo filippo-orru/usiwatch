@@ -8,8 +8,8 @@ class DatabaseConnection():
     def __init__(self):
 
         print('DEBUG: Creating new connection to database')
-        self._client = MongoClient('127.0.0.1:')
-        self._db = self._client.get_database('daycare')
+        self._client = MongoClient('127.0.0.1:27017')
+        self._db = self._client.get_database('usiwatch')
 
     # def __enter__(self):
     #     return self
@@ -31,22 +31,23 @@ class DatabaseConnection():
             print('ERROR: Failed to close connection to db')
             pass
 
-    def insert_one(self, database, mdbInput):
+    def insert_one(self, collection, mdbInput):
         '''
-        input: ( name_of_db, {mdbinput})
+        input: ( collection, { entry })
         '''
-        return self._db[database].insert_one(mdbInput)
+        return self._db[collection].insert_one(mdbInput)
 
-    def insert_many(self, database, mdbInput):
-        return self._db[database].insert_many(mdbInput)
+    def insert_many(self, collection, mdbInput):
+        return self._db[collection].insert_many(mdbInput)
 
     def find(self,
-             database,
+             collection,
              query,
              limit=1,
              offset=0,
              sort=None,
-             projection=None):
+             projection=None,
+             keepId=False):
         '''
         Example: find('users', {"age": {"$gt": 5}}, 5, 1)
         Will find 5 users with age > 5, skipping the first one
@@ -54,33 +55,40 @@ class DatabaseConnection():
         if sort:
             sortField = sort[0]
             sortDir = ASCENDING if sort[1] == 1 else DESCENDING
-            return self._db[database].find(
+            result = self._db[collection].find(
                 query,
                 projection).skip(offset).limit(limit).sort(sortField, sortDir)
         else:
-            return self._db[database].find(
+            result = self._db[collection].find(
                 query, projection).skip(offset).limit(limit)
 
-    def update(self, database, query):
+        # if '_id' in result:
+        #     result
+        return result
+
+    def update(self, collection, query):
         '''
         Example: update('users', [
             {"age": 18},
             {"$set": {"candrink": "true"}},
             upsert=True])
         '''
-        return self._db[database].update(*query)
+        return self._db[collection].update(*query)
 
-    def update_many(self, database, query):
-        return self._db[database].update_many(*query)
+    def update_many(self, collection, query):
+        return self._db[collection].update_many(*query)
 
-    def delete(self, database, query):
+    def delete(self, collection, query):
         '''
         Example: delete('users', {"age": {"$lt": 18}})
         '''
-        return self._db[database].delete_one(query)
+        return self._db[collection].delete_one(query)
 
-    def delete_many(self, database, query):
-        return self._db[database].delete_many(query)
+    def delete_many(self, collection, query):
+        return self._db[collection].delete_many(query)
 
-    def drop(self, database):
-        return self._db[database].drop()
+    def drop(self, collection):
+        return self._db[collection].drop()
+
+    def aggregate(self, collection, pipeline):
+        return self._db[collection].aggregate(pipeline)

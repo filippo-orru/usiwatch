@@ -1,0 +1,1 @@
+/root/.local/share/virtualenvs/usiwatch-DG2s277z/bin/python server/service.py
