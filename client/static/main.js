@@ -5018,10 +5018,44 @@ var author$project$Home$decodePlaces = A2(
 	elm$json$Json$Decode$map,
 	author$project$Home$Places,
 	A2(elm$json$Json$Decode$field, 'free', elm$json$Json$Decode$int));
+var author$project$Home$Sresselected = {$: 'Sresselected'};
+var elm$json$Json$Decode$andThen = _Json_andThen;
+var elm$json$Json$Decode$bool = _Json_decodeBool;
+var elm$json$Json$Decode$succeed = _Json_succeed;
+var author$project$Home$decodeWatching = A2(
+	elm$json$Json$Decode$andThen,
+	function (b) {
+		return b ? elm$json$Json$Decode$succeed(author$project$Home$Sresselected) : elm$json$Json$Decode$succeed(author$project$Home$Sresunselected);
+	},
+	elm$json$Json$Decode$bool);
 var elm$json$Json$Decode$array = _Json_decodeArray;
 var elm$json$Json$Decode$map6 = _Json_map6;
 var elm$json$Json$Decode$string = _Json_decodeString;
-var elm$json$Json$Decode$succeed = _Json_succeed;
+var elm$core$Maybe$withDefault = F2(
+	function (_default, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return value;
+		} else {
+			return _default;
+		}
+	});
+var elm$json$Json$Decode$oneOf = _Json_oneOf;
+var elm$json$Json$Decode$maybe = function (decoder) {
+	return elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A2(elm$json$Json$Decode$map, elm$core$Maybe$Just, decoder),
+				elm$json$Json$Decode$succeed(elm$core$Maybe$Nothing)
+			]));
+};
+var elm_community$json_extra$Json$Decode$Extra$withDefault = F2(
+	function (fallback, decoder) {
+		return A2(
+			elm$json$Json$Decode$map,
+			elm$core$Maybe$withDefault(fallback),
+			elm$json$Json$Decode$maybe(decoder));
+	});
 var author$project$Home$decodeSearchresults = elm$json$Json$Decode$array(
 	A7(
 		elm$json$Json$Decode$map6,
@@ -5031,7 +5065,10 @@ var author$project$Home$decodeSearchresults = elm$json$Json$Decode$array(
 		A2(elm$json$Json$Decode$field, 'link', elm$json$Json$Decode$string),
 		A2(elm$json$Json$Decode$field, 'time', elm$json$Json$Decode$string),
 		A2(elm$json$Json$Decode$field, 'places', author$project$Home$decodePlaces),
-		elm$json$Json$Decode$succeed(author$project$Home$Sresunselected)));
+		A2(
+			elm_community$json_extra$Json$Decode$Extra$withDefault,
+			author$project$Home$Sresunselected,
+			A2(elm$json$Json$Decode$field, 'watching', author$project$Home$decodeWatching))));
 var elm$core$Result$mapError = F2(
 	function (f, result) {
 		if (result.$ === 'Ok') {
@@ -5920,9 +5957,19 @@ var author$project$Home$getExamples = elm$http$Http$get(
 	});
 var author$project$Home$init = function (_n0) {
 	return _Utils_Tuple2(
-		{login: author$project$Home$Guest, overlay: author$project$Home$OverlayHidden, query: '', selectedCourse: elm$core$Maybe$Nothing, state: author$project$Home$LIdle},
+		{login: author$project$Home$Guest, overlay: author$project$Home$OverlayHidden, query: '', selectedCourse: elm$core$Maybe$Nothing, showMore: false, state: author$project$Home$LIdle},
 		author$project$Home$getExamples);
 };
+var author$project$Home$DeleteoverlayVisible = F2(
+	function (a, b) {
+		return {$: 'DeleteoverlayVisible', a: a, b: b};
+	});
+var author$project$Home$EmailoverlayVisible = F2(
+	function (a, b) {
+		return {$: 'EmailoverlayVisible', a: a, b: b};
+	});
+var author$project$Home$GetExamples = {$: 'GetExamples'};
+var author$project$Home$HideOverlay = {$: 'HideOverlay'};
 var author$project$Home$LBusy = {$: 'LBusy'};
 var author$project$Home$LErr = function (a) {
 	return {$: 'LErr', a: a};
@@ -5933,69 +5980,165 @@ var author$project$Home$LSuccess = function (a) {
 var author$project$Home$LoggedIn = function (a) {
 	return {$: 'LoggedIn', a: a};
 };
-var author$project$Home$OverlayVisible = F2(
-	function (a, b) {
-		return {$: 'OverlayVisible', a: a, b: b};
-	});
+var author$project$Home$MessageoverlayVisible = function (a) {
+	return {$: 'MessageoverlayVisible', a: a};
+};
+var author$project$Home$NoOp = {$: 'NoOp'};
 var author$project$Home$ShowOverlay = function (a) {
 	return {$: 'ShowOverlay', a: a};
 };
-var author$project$Home$Sresselected = {$: 'Sresselected'};
-var author$project$Home$performsearch = function (query) {
-	return elm$http$Http$get(
+var author$project$Home$Sreserror = function (a) {
+	return {$: 'Sreserror', a: a};
+};
+var author$project$Home$Togglewatch = function (a) {
+	return {$: 'Togglewatch', a: a};
+};
+var author$project$Home$DeletedRecords = F2(
+	function (a, b) {
+		return {$: 'DeletedRecords', a: a, b: b};
+	});
+var elm$http$Http$expectBytesResponse = F2(
+	function (toMsg, toResult) {
+		return A3(
+			_Http_expect,
+			'arraybuffer',
+			_Http_toDataView,
+			A2(elm$core$Basics$composeR, toResult, toMsg));
+	});
+var elm$http$Http$expectWhatever = function (toMsg) {
+	return A2(
+		elm$http$Http$expectBytesResponse,
+		toMsg,
+		elm$http$Http$resolve(
+			function (_n0) {
+				return elm$core$Result$Ok(_Utils_Tuple0);
+			}));
+};
+var elm$http$Http$jsonBody = function (value) {
+	return A2(
+		_Http_pair,
+		'application/json',
+		A2(elm$json$Json$Encode$encode, 0, value));
+};
+var elm$json$Json$Encode$object = function (pairs) {
+	return _Json_wrap(
+		A3(
+			elm$core$List$foldl,
+			F2(
+				function (_n0, obj) {
+					var k = _n0.a;
+					var v = _n0.b;
+					return A3(_Json_addField, k, v, obj);
+				}),
+			_Json_emptyObject(_Utils_Tuple0),
+			pairs));
+};
+var elm$json$Json$Encode$string = _Json_wrap;
+var author$project$Home$deleteRecords = function (email) {
+	return elm$http$Http$request(
 		{
-			expect: A2(elm$http$Http$expectJson, author$project$Home$GotSearchResults, author$project$Home$decodeSearchresults),
-			url: '/api/search/' + query
+			body: elm$http$Http$jsonBody(
+				elm$json$Json$Encode$object(
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'email',
+							elm$json$Json$Encode$string(email))
+						]))),
+			expect: elm$http$Http$expectWhatever(
+				author$project$Home$DeletedRecords(email)),
+			headers: _List_Nil,
+			method: 'DELETE',
+			timeout: elm$core$Maybe$Nothing,
+			tracker: elm$core$Maybe$Nothing,
+			url: '/api/watching'
 		});
 };
-var elm$core$Basics$neq = _Utils_notEqual;
-var elm$core$String$contains = _String_contains;
-var elm$core$String$length = _String_length;
-var author$project$Home$validEmail = function (email) {
-	return A2(elm$core$String$contains, '@', email) && (elm$core$String$length(email) && A2(elm$core$String$contains, '.', email));
+var author$project$Home$performsearch = F2(
+	function (query, maybeemail) {
+		if (maybeemail.$ === 'Just') {
+			var email = maybeemail.a;
+			return elm$http$Http$request(
+				{
+					body: elm$http$Http$jsonBody(
+						elm$json$Json$Encode$object(
+							_List_fromArray(
+								[
+									_Utils_Tuple2(
+									'email',
+									elm$json$Json$Encode$string(email))
+								]))),
+					expect: A2(elm$http$Http$expectJson, author$project$Home$GotSearchResults, author$project$Home$decodeSearchresults),
+					headers: _List_Nil,
+					method: 'POST',
+					timeout: elm$core$Maybe$Nothing,
+					tracker: elm$core$Maybe$Nothing,
+					url: '/api/search/' + query
+				});
+		} else {
+			return elm$http$Http$get(
+				{
+					expect: A2(elm$http$Http$expectJson, author$project$Home$GotSearchResults, author$project$Home$decodeSearchresults),
+					url: '/api/search/' + query
+				});
+		}
+	});
+var author$project$Home$PostedUnwatch = F2(
+	function (a, b) {
+		return {$: 'PostedUnwatch', a: a, b: b};
+	});
+var author$project$Home$encodeResult = F2(
+	function (email, res) {
+		return elm$json$Json$Encode$object(
+			_List_fromArray(
+				[
+					_Utils_Tuple2(
+					'email',
+					elm$json$Json$Encode$string(email)),
+					_Utils_Tuple2(
+					'id',
+					elm$json$Json$Encode$string(res.id))
+				]));
+	});
+var author$project$Home$postUnwatch = F3(
+	function (email, result, index) {
+		return elm$http$Http$request(
+			{
+				body: elm$http$Http$jsonBody(
+					A2(author$project$Home$encodeResult, email, result)),
+				expect: elm$http$Http$expectWhatever(
+					author$project$Home$PostedUnwatch(index)),
+				headers: _List_Nil,
+				method: 'DELETE',
+				timeout: elm$core$Maybe$Nothing,
+				tracker: elm$core$Maybe$Nothing,
+				url: '/api/watch'
+			});
+	});
+var author$project$Home$PostedWatch = F2(
+	function (a, b) {
+		return {$: 'PostedWatch', a: a, b: b};
+	});
+var elm$http$Http$post = function (r) {
+	return elm$http$Http$request(
+		{body: r.body, expect: r.expect, headers: _List_Nil, method: 'POST', timeout: elm$core$Maybe$Nothing, tracker: elm$core$Maybe$Nothing, url: r.url});
 };
+var author$project$Home$postWatch = F3(
+	function (email, result, index) {
+		return elm$http$Http$post(
+			{
+				body: elm$http$Http$jsonBody(
+					A2(author$project$Home$encodeResult, email, result)),
+				expect: elm$http$Http$expectWhatever(
+					author$project$Home$PostedWatch(index)),
+				url: '/api/watch'
+			});
+	});
+var author$project$Home$Sresload = {$: 'Sresload'};
 var elm$core$Bitwise$shiftRightZfBy = _Bitwise_shiftRightZfBy;
 var elm$core$Array$bitMask = 4294967295 >>> (32 - elm$core$Array$shiftStep);
 var elm$core$Bitwise$and = _Bitwise_and;
 var elm$core$Elm$JsArray$unsafeGet = _JsArray_unsafeGet;
-var elm$core$Array$getHelp = F3(
-	function (shift, index, tree) {
-		getHelp:
-		while (true) {
-			var pos = elm$core$Array$bitMask & (index >>> shift);
-			var _n0 = A2(elm$core$Elm$JsArray$unsafeGet, pos, tree);
-			if (_n0.$ === 'SubTree') {
-				var subTree = _n0.a;
-				var $temp$shift = shift - elm$core$Array$shiftStep,
-					$temp$index = index,
-					$temp$tree = subTree;
-				shift = $temp$shift;
-				index = $temp$index;
-				tree = $temp$tree;
-				continue getHelp;
-			} else {
-				var values = _n0.a;
-				return A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, values);
-			}
-		}
-	});
-var elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
-var elm$core$Array$tailIndex = function (len) {
-	return (len >>> 5) << 5;
-};
-var elm$core$Basics$ge = _Utils_ge;
-var elm$core$Array$get = F2(
-	function (index, _n0) {
-		var len = _n0.a;
-		var startShift = _n0.b;
-		var tree = _n0.c;
-		var tail = _n0.d;
-		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? elm$core$Maybe$Nothing : ((_Utils_cmp(
-			index,
-			elm$core$Array$tailIndex(len)) > -1) ? elm$core$Maybe$Just(
-			A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, tail)) : elm$core$Maybe$Just(
-			A3(elm$core$Array$getHelp, startShift, index, tree)));
-	});
 var elm$core$Elm$JsArray$unsafeSet = _JsArray_unsafeSet;
 var elm$core$Array$setHelp = F4(
 	function (shift, index, value, tree) {
@@ -6019,6 +6162,11 @@ var elm$core$Array$setHelp = F4(
 				tree);
 		}
 	});
+var elm$core$Bitwise$shiftLeftBy = _Bitwise_shiftLeftBy;
+var elm$core$Array$tailIndex = function (len) {
+	return (len >>> 5) << 5;
+};
+var elm$core$Basics$ge = _Utils_ge;
 var elm$core$Array$set = F3(
 	function (index, value, array) {
 		var len = array.a;
@@ -6039,12 +6187,320 @@ var elm$core$Array$set = F3(
 			A4(elm$core$Array$setHelp, startShift, index, value, tree),
 			tail));
 	});
+var author$project$Home$toggleWatchRes = F6(
+	function (cmd, model, email, sres, index, res) {
+		var newres = _Utils_update(
+			res,
+			{state: author$project$Home$Sresload});
+		var newsres = A3(elm$core$Array$set, index, newres, sres);
+		return _Utils_Tuple2(
+			_Utils_update(
+				model,
+				{
+					state: author$project$Home$LSuccess(newsres)
+				}),
+			A3(cmd, email, newres, index));
+	});
+var elm$core$Basics$neq = _Utils_notEqual;
+var elm$core$String$contains = _String_contains;
+var elm$core$String$length = _String_length;
+var author$project$Home$validEmail = function (email) {
+	return A2(elm$core$String$contains, '@', email) && (elm$core$String$length(email) && A2(elm$core$String$contains, '.', email));
+};
+var elm$browser$Browser$External = function (a) {
+	return {$: 'External', a: a};
+};
+var elm$browser$Browser$Internal = function (a) {
+	return {$: 'Internal', a: a};
+};
+var elm$browser$Browser$Dom$NotFound = function (a) {
+	return {$: 'NotFound', a: a};
+};
+var elm$core$Basics$never = function (_n0) {
+	never:
+	while (true) {
+		var nvr = _n0.a;
+		var $temp$_n0 = nvr;
+		_n0 = $temp$_n0;
+		continue never;
+	}
+};
+var elm$core$Task$Perform = function (a) {
+	return {$: 'Perform', a: a};
+};
+var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
+var elm$core$List$map = F2(
+	function (f, xs) {
+		return A3(
+			elm$core$List$foldr,
+			F2(
+				function (x, acc) {
+					return A2(
+						elm$core$List$cons,
+						f(x),
+						acc);
+				}),
+			_List_Nil,
+			xs);
+	});
+var elm$core$Task$map = F2(
+	function (func, taskA) {
+		return A2(
+			elm$core$Task$andThen,
+			function (a) {
+				return elm$core$Task$succeed(
+					func(a));
+			},
+			taskA);
+	});
+var elm$core$Task$spawnCmd = F2(
+	function (router, _n0) {
+		var task = _n0.a;
+		return _Scheduler_spawn(
+			A2(
+				elm$core$Task$andThen,
+				elm$core$Platform$sendToApp(router),
+				task));
+	});
+var elm$core$Task$onEffects = F3(
+	function (router, commands, state) {
+		return A2(
+			elm$core$Task$map,
+			function (_n0) {
+				return _Utils_Tuple0;
+			},
+			elm$core$Task$sequence(
+				A2(
+					elm$core$List$map,
+					elm$core$Task$spawnCmd(router),
+					commands)));
+	});
+var elm$core$Task$onSelfMsg = F3(
+	function (_n0, _n1, _n2) {
+		return elm$core$Task$succeed(_Utils_Tuple0);
+	});
+var elm$core$Task$cmdMap = F2(
+	function (tagger, _n0) {
+		var task = _n0.a;
+		return elm$core$Task$Perform(
+			A2(elm$core$Task$map, tagger, task));
+	});
+_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
+var elm$core$Task$command = _Platform_leaf('Task');
+var elm$core$Task$perform = F2(
+	function (toMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(elm$core$Task$map, toMessage, task)));
+	});
+var elm$json$Json$Decode$map2 = _Json_map2;
+var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
+	switch (handler.$) {
+		case 'Normal':
+			return 0;
+		case 'MayStopPropagation':
+			return 1;
+		case 'MayPreventDefault':
+			return 2;
+		default:
+			return 3;
+	}
+};
+var elm$core$String$slice = _String_slice;
+var elm$core$String$dropLeft = F2(
+	function (n, string) {
+		return (n < 1) ? string : A3(
+			elm$core$String$slice,
+			n,
+			elm$core$String$length(string),
+			string);
+	});
+var elm$core$String$startsWith = _String_startsWith;
+var elm$url$Url$Http = {$: 'Http'};
+var elm$url$Url$Https = {$: 'Https'};
+var elm$core$String$indexes = _String_indexes;
+var elm$core$String$isEmpty = function (string) {
+	return string === '';
+};
+var elm$core$String$left = F2(
+	function (n, string) {
+		return (n < 1) ? '' : A3(elm$core$String$slice, 0, n, string);
+	});
+var elm$core$String$toInt = _String_toInt;
+var elm$url$Url$Url = F6(
+	function (protocol, host, port_, path, query, fragment) {
+		return {fragment: fragment, host: host, path: path, port_: port_, protocol: protocol, query: query};
+	});
+var elm$url$Url$chompBeforePath = F5(
+	function (protocol, path, params, frag, str) {
+		if (elm$core$String$isEmpty(str) || A2(elm$core$String$contains, '@', str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, ':', str);
+			if (!_n0.b) {
+				return elm$core$Maybe$Just(
+					A6(elm$url$Url$Url, protocol, str, elm$core$Maybe$Nothing, path, params, frag));
+			} else {
+				if (!_n0.b.b) {
+					var i = _n0.a;
+					var _n1 = elm$core$String$toInt(
+						A2(elm$core$String$dropLeft, i + 1, str));
+					if (_n1.$ === 'Nothing') {
+						return elm$core$Maybe$Nothing;
+					} else {
+						var port_ = _n1;
+						return elm$core$Maybe$Just(
+							A6(
+								elm$url$Url$Url,
+								protocol,
+								A2(elm$core$String$left, i, str),
+								port_,
+								path,
+								params,
+								frag));
+					}
+				} else {
+					return elm$core$Maybe$Nothing;
+				}
+			}
+		}
+	});
+var elm$url$Url$chompBeforeQuery = F4(
+	function (protocol, params, frag, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '/', str);
+			if (!_n0.b) {
+				return A5(elm$url$Url$chompBeforePath, protocol, '/', params, frag, str);
+			} else {
+				var i = _n0.a;
+				return A5(
+					elm$url$Url$chompBeforePath,
+					protocol,
+					A2(elm$core$String$dropLeft, i, str),
+					params,
+					frag,
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$chompBeforeFragment = F3(
+	function (protocol, frag, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '?', str);
+			if (!_n0.b) {
+				return A4(elm$url$Url$chompBeforeQuery, protocol, elm$core$Maybe$Nothing, frag, str);
+			} else {
+				var i = _n0.a;
+				return A4(
+					elm$url$Url$chompBeforeQuery,
+					protocol,
+					elm$core$Maybe$Just(
+						A2(elm$core$String$dropLeft, i + 1, str)),
+					frag,
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$chompAfterProtocol = F2(
+	function (protocol, str) {
+		if (elm$core$String$isEmpty(str)) {
+			return elm$core$Maybe$Nothing;
+		} else {
+			var _n0 = A2(elm$core$String$indexes, '#', str);
+			if (!_n0.b) {
+				return A3(elm$url$Url$chompBeforeFragment, protocol, elm$core$Maybe$Nothing, str);
+			} else {
+				var i = _n0.a;
+				return A3(
+					elm$url$Url$chompBeforeFragment,
+					protocol,
+					elm$core$Maybe$Just(
+						A2(elm$core$String$dropLeft, i + 1, str)),
+					A2(elm$core$String$left, i, str));
+			}
+		}
+	});
+var elm$url$Url$fromString = function (str) {
+	return A2(elm$core$String$startsWith, 'http://', str) ? A2(
+		elm$url$Url$chompAfterProtocol,
+		elm$url$Url$Http,
+		A2(elm$core$String$dropLeft, 7, str)) : (A2(elm$core$String$startsWith, 'https://', str) ? A2(
+		elm$url$Url$chompAfterProtocol,
+		elm$url$Url$Https,
+		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
+};
+var elm$browser$Browser$Dom$focus = _Browser_call('focus');
+var elm$core$Array$getHelp = F3(
+	function (shift, index, tree) {
+		getHelp:
+		while (true) {
+			var pos = elm$core$Array$bitMask & (index >>> shift);
+			var _n0 = A2(elm$core$Elm$JsArray$unsafeGet, pos, tree);
+			if (_n0.$ === 'SubTree') {
+				var subTree = _n0.a;
+				var $temp$shift = shift - elm$core$Array$shiftStep,
+					$temp$index = index,
+					$temp$tree = subTree;
+				shift = $temp$shift;
+				index = $temp$index;
+				tree = $temp$tree;
+				continue getHelp;
+			} else {
+				var values = _n0.a;
+				return A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, values);
+			}
+		}
+	});
+var elm$core$Array$get = F2(
+	function (index, _n0) {
+		var len = _n0.a;
+		var startShift = _n0.b;
+		var tree = _n0.c;
+		var tail = _n0.d;
+		return ((index < 0) || (_Utils_cmp(index, len) > -1)) ? elm$core$Maybe$Nothing : ((_Utils_cmp(
+			index,
+			elm$core$Array$tailIndex(len)) > -1) ? elm$core$Maybe$Just(
+			A2(elm$core$Elm$JsArray$unsafeGet, elm$core$Array$bitMask & index, tail)) : elm$core$Maybe$Just(
+			A3(elm$core$Array$getHelp, startShift, index, tree)));
+	});
+var elm$core$Basics$not = _Basics_not;
 var elm$core$Platform$Cmd$batch = _Platform_batch;
 var elm$core$Platform$Cmd$none = elm$core$Platform$Cmd$batch(_List_Nil);
+var elm$core$Basics$composeL = F3(
+	function (g, f, x) {
+		return g(
+			f(x));
+	});
+var elm$core$Task$onError = _Scheduler_onError;
+var elm$core$Task$attempt = F2(
+	function (resultToMessage, task) {
+		return elm$core$Task$command(
+			elm$core$Task$Perform(
+				A2(
+					elm$core$Task$onError,
+					A2(
+						elm$core$Basics$composeL,
+						A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+						elm$core$Result$Err),
+					A2(
+						elm$core$Task$andThen,
+						A2(
+							elm$core$Basics$composeL,
+							A2(elm$core$Basics$composeL, elm$core$Task$succeed, resultToMessage),
+							elm$core$Result$Ok),
+						task))));
+	});
 var author$project$Home$update = F2(
 	function (msg, model) {
 		update:
 		while (true) {
+			var cmdnone = function (m) {
+				return _Utils_Tuple2(m, elm$core$Platform$Cmd$none);
+			};
 			switch (msg.$) {
 				case 'UpdateQuery':
 					var query = msg.a;
@@ -6054,11 +6510,34 @@ var author$project$Home$update = F2(
 							{query: query}),
 						elm$core$Platform$Cmd$none);
 				case 'PerformSearch':
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{state: author$project$Home$LBusy}),
-						author$project$Home$performsearch(model.query));
+					if (!elm$core$String$length(model.query)) {
+						var $temp$msg = author$project$Home$GetExamples,
+							$temp$model = model;
+						msg = $temp$msg;
+						model = $temp$model;
+						continue update;
+					} else {
+						var _n1 = model.login;
+						if (_n1.$ === 'LoggedIn') {
+							var email = _n1.a;
+							return _Utils_Tuple2(
+								_Utils_update(
+									model,
+									{state: author$project$Home$LBusy}),
+								A2(
+									author$project$Home$performsearch,
+									model.query,
+									elm$core$Maybe$Just(email)));
+						} else {
+							return _Utils_Tuple2(
+								_Utils_update(
+									model,
+									{state: author$project$Home$LBusy}),
+								A2(author$project$Home$performsearch, model.query, elm$core$Maybe$Nothing));
+						}
+					}
+				case 'GetExamples':
+					return _Utils_Tuple2(model, author$project$Home$getExamples);
 				case 'GotSearchResults':
 					var result = msg.a;
 					if (result.$ === 'Ok') {
@@ -6086,22 +6565,55 @@ var author$project$Home$update = F2(
 						_Utils_update(
 							model,
 							{
-								overlay: A2(author$project$Home$OverlayVisible, email, elm$core$Maybe$Nothing)
+								overlay: A2(author$project$Home$EmailoverlayVisible, email, elm$core$Maybe$Nothing)
 							}),
 						elm$core$Platform$Cmd$none);
 				case 'ConfirmEmail':
-					var _n2 = model.overlay;
-					if (_n2.$ === 'OverlayVisible') {
-						var email = _n2.a;
+					var _n3 = model.overlay;
+					if (_n3.$ === 'EmailoverlayVisible') {
+						var email = _n3.a;
 						if (author$project$Home$validEmail(email)) {
-							return _Utils_Tuple2(
-								_Utils_update(
-									model,
-									{
-										login: author$project$Home$LoggedIn(email),
-										overlay: author$project$Home$OverlayHidden
-									}),
-								elm$core$Platform$Cmd$none);
+							var _n4 = model.selectedCourse;
+							if (_n4.$ === 'Just') {
+								var index = _n4.a;
+								var message = 'Der Kurs wurde zur Watchlist hinzugefügt. Du wirst benachrichtigt, wenn ein Platz frei wird.';
+								var _n5 = A2(
+									author$project$Home$update,
+									author$project$Home$Togglewatch(index),
+									A2(
+										author$project$Home$update,
+										author$project$Home$GetExamples,
+										A2(
+											author$project$Home$update,
+											author$project$Home$HideOverlay,
+											_Utils_update(
+												model,
+												{
+													login: author$project$Home$LoggedIn(email),
+													selectedCourse: elm$core$Maybe$Nothing
+												})).a).a);
+								var tglModel = _n5.a;
+								var tglCmd = _n5.b;
+								return _Utils_Tuple2(
+									_Utils_update(
+										tglModel,
+										{
+											overlay: author$project$Home$MessageoverlayVisible(message)
+										}),
+									tglCmd);
+							} else {
+								return A2(
+									author$project$Home$update,
+									author$project$Home$HideOverlay,
+									A2(
+										author$project$Home$update,
+										author$project$Home$GetExamples,
+										_Utils_update(
+											model,
+											{
+												login: author$project$Home$LoggedIn(email)
+											})).a);
+							}
 						} else {
 							var $temp$msg = author$project$Home$ShowOverlay(
 								elm$core$Maybe$Just('Keine gültige Email!')),
@@ -6113,35 +6625,50 @@ var author$project$Home$update = F2(
 					} else {
 						return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
 					}
+				case 'Logout':
+					return cmdnone(
+						_Utils_update(
+							model,
+							{login: author$project$Home$Guest, selectedCourse: elm$core$Maybe$Nothing}));
 				case 'Togglewatch':
 					var index = msg.a;
-					var _n3 = model.login;
-					if (_n3.$ === 'LoggedIn') {
-						var email = _n3.a;
-						var _n4 = model.state;
-						if (_n4.$ === 'LSuccess') {
-							var sres = _n4.a;
-							var _n5 = A2(elm$core$Array$get, index, sres);
-							if (_n5.$ === 'Just') {
-								var res = _n5.a;
-								var newres = _Utils_eq(res.state, author$project$Home$Sresunselected) ? _Utils_update(
-									res,
-									{state: author$project$Home$Sresselected}) : _Utils_update(
-									res,
-									{state: author$project$Home$Sresunselected});
-								var newsres = A3(elm$core$Array$set, index, newres, sres);
-								return _Utils_Tuple2(
-									_Utils_update(
-										model,
-										{
-											state: author$project$Home$LSuccess(newsres)
-										}),
-									elm$core$Platform$Cmd$none);
+					var _n6 = model.login;
+					if (_n6.$ === 'LoggedIn') {
+						var email = _n6.a;
+						var _n7 = model.state;
+						if (_n7.$ === 'LSuccess') {
+							var sres = _n7.a;
+							var _n8 = A2(elm$core$Array$get, index, sres);
+							if (_n8.$ === 'Just') {
+								var res = _n8.a;
+								var _n9 = res.state;
+								switch (_n9.$) {
+									case 'Sresunselected':
+										return (!res.places.free) ? A6(author$project$Home$toggleWatchRes, author$project$Home$postWatch, model, email, sres, index, res) : cmdnone(model);
+									case 'Sresselected':
+										return A6(author$project$Home$toggleWatchRes, author$project$Home$postUnwatch, model, email, sres, index, res);
+									case 'Sreserror':
+										var newsres = A3(
+											elm$core$Array$set,
+											index,
+											_Utils_update(
+												res,
+												{state: author$project$Home$Sresunselected}),
+											sres);
+										return cmdnone(
+											_Utils_update(
+												model,
+												{
+													state: author$project$Home$LSuccess(newsres)
+												}));
+									default:
+										return cmdnone(model);
+								}
 							} else {
-								return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
+								return cmdnone(model);
 							}
 						} else {
-							return _Utils_Tuple2(model, elm$core$Platform$Cmd$none);
+							return cmdnone(model);
 						}
 					} else {
 						var $temp$msg = author$project$Home$ShowOverlay(elm$core$Maybe$Nothing),
@@ -6154,46 +6681,163 @@ var author$project$Home$update = F2(
 						model = $temp$model;
 						continue update;
 					}
+				case 'PostedWatch':
+					var index = msg.a;
+					var result = msg.b;
+					var _n10 = model.state;
+					if (_n10.$ === 'LSuccess') {
+						var resarr = _n10.a;
+						var _n11 = A2(elm$core$Array$get, index, resarr);
+						if (_n11.$ === 'Just') {
+							var sres = _n11.a;
+							var newstate = function () {
+								if (result.$ === 'Ok') {
+									return author$project$Home$Sresselected;
+								} else {
+									var e = result.a;
+									return author$project$Home$Sreserror(e);
+								}
+							}();
+							var newresarr = A3(
+								elm$core$Array$set,
+								index,
+								_Utils_update(
+									sres,
+									{state: newstate}),
+								resarr);
+							return cmdnone(
+								_Utils_update(
+									model,
+									{
+										state: author$project$Home$LSuccess(newresarr)
+									}));
+						} else {
+							return cmdnone(model);
+						}
+					} else {
+						return cmdnone(model);
+					}
+				case 'PostedUnwatch':
+					var index = msg.a;
+					var result = msg.b;
+					var _n13 = model.state;
+					if (_n13.$ === 'LSuccess') {
+						var resarr = _n13.a;
+						var _n14 = A2(elm$core$Array$get, index, resarr);
+						if (_n14.$ === 'Just') {
+							var sres = _n14.a;
+							var newstate = function () {
+								if (result.$ === 'Ok') {
+									return author$project$Home$Sresunselected;
+								} else {
+									var e = result.a;
+									return author$project$Home$Sreserror(e);
+								}
+							}();
+							var newresarr = A3(
+								elm$core$Array$set,
+								index,
+								_Utils_update(
+									sres,
+									{state: newstate}),
+								resarr);
+							return cmdnone(
+								_Utils_update(
+									model,
+									{
+										state: author$project$Home$LSuccess(newresarr)
+									}));
+						} else {
+							return cmdnone(model);
+						}
+					} else {
+						return cmdnone(model);
+					}
 				case 'ShowOverlay':
 					var mbs = msg.a;
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{
-								overlay: A2(author$project$Home$OverlayVisible, '', mbs)
+								overlay: A2(author$project$Home$EmailoverlayVisible, '', mbs)
 							}),
-						elm$core$Platform$Cmd$none);
-				default:
+						A2(
+							elm$core$Task$attempt,
+							function (_n16) {
+								return author$project$Home$NoOp;
+							},
+							elm$browser$Browser$Dom$focus('email-box')));
+				case 'HideOverlay':
 					return _Utils_Tuple2(
 						_Utils_update(
 							model,
 							{overlay: author$project$Home$OverlayHidden}),
+						A2(
+							elm$core$Task$attempt,
+							function (_n17) {
+								return author$project$Home$NoOp;
+							},
+							elm$browser$Browser$Dom$focus('search-box')));
+				case 'ToggleMore':
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{showMore: !model.showMore}),
 						elm$core$Platform$Cmd$none);
+				case 'ToggleDeleteOverlay':
+					var email = msg.a;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								overlay: A2(author$project$Home$DeleteoverlayVisible, email, elm$core$Maybe$Nothing)
+							}),
+						elm$core$Platform$Cmd$none);
+				case 'ConfirmDelete':
+					var email = msg.a;
+					return _Utils_Tuple2(
+						model,
+						author$project$Home$deleteRecords(email));
+				case 'DeletedRecords':
+					var email = msg.a;
+					var result = msg.b;
+					if (result.$ === 'Ok') {
+						var $temp$msg = author$project$Home$GetExamples,
+							$temp$model = _Utils_update(
+							model,
+							{login: author$project$Home$Guest, overlay: author$project$Home$OverlayHidden});
+						msg = $temp$msg;
+						model = $temp$model;
+						continue update;
+					} else {
+						return cmdnone(
+							_Utils_update(
+								model,
+								{
+									login: author$project$Home$Guest,
+									overlay: A2(
+										author$project$Home$DeleteoverlayVisible,
+										email,
+										elm$core$Maybe$Just('Konnte Account nicht löschen. Probiere es später erneut'))
+								}));
+					}
+				default:
+					return cmdnone(model);
 			}
 		}
 	});
 var author$project$Home$PerformSearch = {$: 'PerformSearch'};
+var author$project$Home$ToggleDeleteOverlay = function (a) {
+	return {$: 'ToggleDeleteOverlay', a: a};
+};
+var author$project$Home$ToggleMore = {$: 'ToggleMore'};
 var author$project$Home$UpdateQuery = function (a) {
 	return {$: 'UpdateQuery', a: a};
-};
-var elm$json$Json$Decode$map2 = _Json_map2;
-var elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
-	switch (handler.$) {
-		case 'Normal':
-			return 0;
-		case 'MayStopPropagation':
-			return 1;
-		case 'MayPreventDefault':
-			return 2;
-		default:
-			return 3;
-	}
 };
 var elm$html$Html$div = _VirtualDom_node('div');
 var elm$html$Html$span = _VirtualDom_node('span');
 var elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var elm$html$Html$text = elm$virtual_dom$VirtualDom$text;
-var elm$json$Json$Encode$string = _Json_wrap;
 var elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
 		return A2(
@@ -6221,9 +6865,6 @@ var author$project$Home$viewEmptyResults = _List_fromArray(
 					]))
 			]))
 	]);
-var author$project$Home$Togglewatch = function (a) {
-	return {$: 'Togglewatch', a: a};
-};
 var elm$html$Html$a = _VirtualDom_node('a');
 var elm$html$Html$i = _VirtualDom_node('i');
 var elm$html$Html$Attributes$href = function (url) {
@@ -6254,17 +6895,17 @@ var elm$html$Html$Events$onClick = function (msg) {
 };
 var author$project$Home$viewResult = F2(
 	function (index, sresult) {
-		var resultbtn = F2(
-			function (title_, faclass) {
+		var resultbtn = F3(
+			function (action, title_, faclass) {
 				return A2(
 					elm$html$Html$a,
-					_List_fromArray(
-						[
-							elm$html$Html$Events$onClick(
-							author$project$Home$Togglewatch(index)),
-							elm$html$Html$Attributes$class('result-btn'),
-							elm$html$Html$Attributes$title(title_)
-						]),
+					_Utils_ap(
+						action,
+						_List_fromArray(
+							[
+								elm$html$Html$Attributes$class('result-btn'),
+								elm$html$Html$Attributes$title(title_)
+							])),
 					_List_fromArray(
 						[
 							A2(
@@ -6298,14 +6939,38 @@ var author$project$Home$viewResult = F2(
 				var _n0 = sresult.state;
 				switch (_n0.$) {
 					case 'Sresselected':
-						return A2(resultbtn, 'Von Watchlist entfernen', 'far fa-minus-square');
+						return A3(
+							resultbtn,
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(
+									author$project$Home$Togglewatch(index))
+								]),
+							'Von Watchlist entfernen',
+							'fas fa-bell');
 					case 'Sresunselected':
-						return A2(resultbtn, 'Zur Watchlist hinzufügen', 'far fa-plus-square');
+						return A3(
+							resultbtn,
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(
+									author$project$Home$Togglewatch(index))
+								]),
+							'Zur Watchlist hinzufügen',
+							'far fa-bell');
 					case 'Sresload':
-						return A2(resultbtn, '', 'fas fa-spinner');
+						return A3(resultbtn, _List_Nil, '', 'fas fa-spinner');
 					default:
 						var err = _n0.a;
-						return A2(resultbtn, 'Fehler!', 'fas fa-times');
+						return A3(
+							resultbtn,
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(
+									author$project$Home$Togglewatch(index))
+								]),
+							'Fehler!',
+							'fas fa-times');
 				}
 			} else {
 				return A2(
@@ -6511,6 +7176,7 @@ var elm$html$Html$Attributes$boolProperty = F2(
 			elm$json$Json$Encode$bool(bool));
 	});
 var elm$html$Html$Attributes$autofocus = elm$html$Html$Attributes$boolProperty('autofocus');
+var elm$html$Html$Attributes$id = elm$html$Html$Attributes$stringProperty('id');
 var elm$html$Html$Attributes$placeholder = elm$html$Html$Attributes$stringProperty('placeholder');
 var elm$html$Html$Attributes$type_ = elm$html$Html$Attributes$stringProperty('type');
 var elm$html$Html$Events$alwaysStop = function (x) {
@@ -6566,56 +7232,129 @@ var elm$html$Html$Events$onSubmit = function (msg) {
 			elm$html$Html$Events$alwaysPreventDefault,
 			elm$json$Json$Decode$succeed(msg)));
 };
-var author$project$Home$viewBody = function (lstate) {
-	return A2(
-		elm$html$Html$div,
-		_List_fromArray(
-			[
-				elm$html$Html$Attributes$class('body')
-			]),
-		_List_fromArray(
-			[
-				A2(
-				elm$html$Html$form,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$class('searchbarform'),
-						elm$html$Html$Events$onSubmit(author$project$Home$PerformSearch)
-					]),
-				_List_fromArray(
-					[
-						A2(
-						elm$html$Html$input,
-						_List_fromArray(
-							[
-								elm$html$Html$Attributes$class('themed'),
-								elm$html$Html$Events$onInput(author$project$Home$UpdateQuery),
-								elm$html$Html$Attributes$type_('text'),
-								elm$html$Html$Attributes$placeholder('Suche nach Kursname, ID ...'),
-								elm$html$Html$Attributes$autofocus(true),
-								elm$html$Html$Attributes$autocomplete(true)
-							]),
-						_List_Nil)
-					])),
-				A2(
-				elm$html$Html$div,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$class('searchresultswrapper')
-					]),
-				author$project$Home$viewSearchresults(lstate)),
-				A2(
-				elm$html$Html$span,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$class('signature')
-					]),
-				_List_fromArray(
-					[
-						elm$html$Html$text('Filippo Orru, 2019')
-					]))
-			]));
-};
+var author$project$Home$viewBody = F3(
+	function (loginstate, loadstate, showMore) {
+		return A2(
+			elm$html$Html$div,
+			_List_fromArray(
+				[
+					elm$html$Html$Attributes$class('body')
+				]),
+			_List_fromArray(
+				[
+					A2(
+					elm$html$Html$form,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('searchbarform'),
+							elm$html$Html$Events$onSubmit(author$project$Home$PerformSearch)
+						]),
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$input,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('themed'),
+									elm$html$Html$Attributes$id('search-box'),
+									elm$html$Html$Events$onInput(author$project$Home$UpdateQuery),
+									elm$html$Html$Attributes$type_('text'),
+									elm$html$Html$Attributes$placeholder('Suche nach Kursname, ID ...'),
+									elm$html$Html$Attributes$autofocus(true),
+									elm$html$Html$Attributes$autocomplete(true)
+								]),
+							_List_Nil)
+						])),
+					A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('searchresultswrapper')
+						]),
+					author$project$Home$viewSearchresults(loadstate)),
+					A2(
+					elm$html$Html$span,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('signature')
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('Filippo Orru, 2019')
+						])),
+					function () {
+					if (loginstate.$ === 'LoggedIn') {
+						var email = loginstate.a;
+						return showMore ? A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('more-wrapper')
+								]),
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$span,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(author$project$Home$ToggleMore),
+											elm$html$Html$Attributes$class('more-btn')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Weniger anzeigen'),
+											A2(
+											elm$html$Html$i,
+											_List_fromArray(
+												[
+													elm$html$Html$Attributes$class('fas fa-sort-up')
+												]),
+											_List_Nil)
+										])),
+									A2(
+									elm$html$Html$span,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(
+											author$project$Home$ToggleDeleteOverlay(email)),
+											elm$html$Html$Attributes$class('delete-btn')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Watchlist leeren / Account löschen'),
+											A2(
+											elm$html$Html$i,
+											_List_fromArray(
+												[
+													elm$html$Html$Attributes$class('fas fa-trash')
+												]),
+											_List_Nil)
+										]))
+								])) : A2(
+							elm$html$Html$span,
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onClick(author$project$Home$ToggleMore),
+									elm$html$Html$Attributes$class('more-btn')
+								]),
+							_List_fromArray(
+								[
+									elm$html$Html$text('Mehr anzeigen'),
+									A2(
+									elm$html$Html$i,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('fas fa-sort-down')
+										]),
+									_List_Nil)
+								]));
+					} else {
+						return elm$html$Html$text('');
+					}
+				}()
+				]));
+	});
+var author$project$Home$Logout = {$: 'Logout'};
 var elm$html$Html$h1 = _VirtualDom_node('h1');
 var elm$html$Html$h3 = _VirtualDom_node('h3');
 var author$project$Home$viewHead = F2(
@@ -6640,7 +7379,8 @@ var author$project$Home$viewHead = F2(
 						_List_fromArray(
 							[
 								elm$html$Html$Attributes$class('email'),
-								elm$html$Html$Attributes$title('Ausloggen')
+								elm$html$Html$Attributes$title('Ausloggen'),
+								elm$html$Html$Events$onClick(author$project$Home$Logout)
 							]),
 						_List_fromArray(
 							[
@@ -6684,30 +7424,40 @@ var author$project$Home$viewHead = F2(
 					elm$html$Html$div,
 					_List_fromArray(
 						[
-							elm$html$Html$Attributes$class('logo')
+							elm$html$Html$Attributes$class('logo-wrapper')
 						]),
 					_Utils_ap(
 						_List_fromArray(
 							[
 								A2(
-								elm$html$Html$h1,
+								elm$html$Html$div,
 								_List_fromArray(
 									[
-										elm$html$Html$Attributes$class('head-usi')
+										elm$html$Html$Attributes$class('logo'),
+										elm$html$Html$Events$onClick(author$project$Home$GetExamples)
 									]),
 								_List_fromArray(
 									[
-										elm$html$Html$text('USI')
-									])),
-								A2(
-								elm$html$Html$h3,
-								_List_fromArray(
-									[
-										elm$html$Html$Attributes$class('head-watch')
-									]),
-								_List_fromArray(
-									[
-										elm$html$Html$text('watch')
+										A2(
+										elm$html$Html$h1,
+										_List_fromArray(
+											[
+												elm$html$Html$Attributes$class('head-usi')
+											]),
+										_List_fromArray(
+											[
+												elm$html$Html$text('USI')
+											])),
+										A2(
+										elm$html$Html$h3,
+										_List_fromArray(
+											[
+												elm$html$Html$Attributes$class('head-watch')
+											]),
+										_List_fromArray(
+											[
+												elm$html$Html$text('watch')
+											]))
 									]))
 							]),
 						loggedInHtml)),
@@ -6733,8 +7483,10 @@ var author$project$Home$viewHead = F2(
 						]))
 				]));
 	});
+var author$project$Home$ConfirmDelete = function (a) {
+	return {$: 'ConfirmDelete', a: a};
+};
 var author$project$Home$ConfirmEmail = {$: 'ConfirmEmail'};
-var author$project$Home$HideOverlay = {$: 'HideOverlay'};
 var author$project$Home$UpdateEmail = function (a) {
 	return {$: 'UpdateEmail', a: a};
 };
@@ -6743,124 +7495,328 @@ var elm$html$Html$h2 = _VirtualDom_node('h2');
 var elm$html$Html$Attributes$value = elm$html$Html$Attributes$stringProperty('value');
 var author$project$Home$viewOverlay = F2(
 	function (ostate, lstate) {
-		if (ostate.$ === 'OverlayVisible') {
-			var email = ostate.a;
-			var maybeerr = ostate.b;
-			return A2(
-				elm$html$Html$div,
-				_List_fromArray(
-					[
-						elm$html$Html$Attributes$class('oflwrap overlay-bg')
-					]),
-				_List_fromArray(
-					[
-						A2(
-						elm$html$Html$div,
+		var overlay = F2(
+			function (head, body) {
+				return A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('oflwrap overlay-wrapper')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-window'),
+									A2(
+									elm$html$Html$Events$stopPropagationOn,
+									'click',
+									elm$json$Json$Decode$succeed(
+										_Utils_Tuple2(author$project$Home$NoOp, false)))
+								]),
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$div,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-head')
+										]),
+									_Utils_ap(
+										head,
+										_List_fromArray(
+											[
+												A2(
+												elm$html$Html$span,
+												_List_fromArray(
+													[
+														elm$html$Html$Events$onClick(author$project$Home$HideOverlay),
+														elm$html$Html$Attributes$class('overlay-close hoverbtn')
+													]),
+												_List_fromArray(
+													[
+														A2(
+														elm$html$Html$i,
+														_List_fromArray(
+															[
+																elm$html$Html$Attributes$class('fas fa-times')
+															]),
+														_List_Nil)
+													]))
+											]))),
+									A2(
+									elm$html$Html$div,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-body')
+										]),
+									body)
+								])),
+							A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-bg'),
+									elm$html$Html$Events$onClick(author$project$Home$HideOverlay)
+								]),
+							_List_Nil)
+						]));
+			});
+		switch (ostate.$) {
+			case 'OverlayHidden':
+				return elm$html$Html$text('');
+			case 'EmailoverlayVisible':
+				var email = ostate.a;
+				var maybeerr = ostate.b;
+				return A2(
+					overlay,
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$h2,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-title')
+								]),
+							_List_fromArray(
+								[
+									elm$html$Html$text('Kurs zur Watchlist hinzufügen')
+								]))
+						]),
+					_List_fromArray(
+						[
+							elm$html$Html$text('Über welche Email möchtest du benachrichtigt werden?'),
+							A2(
+							elm$html$Html$form,
+							_List_fromArray(
+								[
+									elm$html$Html$Events$onSubmit(author$project$Home$ConfirmEmail)
+								]),
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$input,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-input themed'),
+											elm$html$Html$Attributes$id('email-box'),
+											elm$html$Html$Attributes$value(email),
+											elm$html$Html$Events$onInput(author$project$Home$UpdateEmail),
+											elm$html$Html$Attributes$placeholder('deine@tolle.email'),
+											elm$html$Html$Attributes$autofocus(true),
+											elm$html$Html$Attributes$autocomplete(true),
+											elm$html$Html$Attributes$type_('email')
+										]),
+									_List_Nil),
+									A2(
+									elm$html$Html$button,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-btn themed')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Yay!')
+										]))
+								])),
+							function () {
+							if (maybeerr.$ === 'Just') {
+								var err = maybeerr.a;
+								return A2(
+									elm$html$Html$span,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-err')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text(err)
+										]));
+							} else {
+								return elm$html$Html$text('');
+							}
+						}()
+						]));
+			case 'CourseconfirmoverlayVisible':
+				var index = ostate.a;
+				if (lstate.$ === 'LoggedIn') {
+					var email = lstate.a;
+					return A2(
+						overlay,
 						_List_fromArray(
 							[
-								elm$html$Html$Attributes$class('overlay-window')
+								A2(
+								elm$html$Html$h2,
+								_List_fromArray(
+									[
+										elm$html$Html$Attributes$class('overlay-title')
+									]),
+								_List_fromArray(
+									[
+										elm$html$Html$text('Bestätige')
+									]))
 							]),
 						_List_fromArray(
 							[
 								A2(
-								elm$html$Html$div,
+								elm$html$Html$p,
 								_List_fromArray(
 									[
-										elm$html$Html$Attributes$class('overlay-head')
+										elm$html$Html$Attributes$class('overlay-body-text')
 									]),
 								_List_fromArray(
 									[
-										A2(
-										elm$html$Html$h2,
-										_List_fromArray(
-											[
-												elm$html$Html$Attributes$class('overlay-title')
-											]),
-										_List_fromArray(
-											[
-												elm$html$Html$text('Kurs zur Watchlist hinzufügen')
-											])),
-										A2(
-										elm$html$Html$span,
-										_List_fromArray(
-											[
-												elm$html$Html$Events$onClick(author$project$Home$HideOverlay),
-												elm$html$Html$Attributes$class('overlay-close hoverbtn')
-											]),
-										_List_fromArray(
-											[
-												A2(
-												elm$html$Html$i,
-												_List_fromArray(
-													[
-														elm$html$Html$Attributes$class('fas fa-times')
-													]),
-												_List_Nil)
-											]))
-									])),
-								A2(
-								elm$html$Html$span,
-								_List_fromArray(
-									[
-										elm$html$Html$Attributes$class('overlay-body')
-									]),
-								_List_fromArray(
-									[
-										elm$html$Html$text('Wir benachrichtigen dich per Email, wenn der Kurs wieder frei wird.')
-									])),
-								A2(
-								elm$html$Html$form,
-								_List_fromArray(
-									[
-										elm$html$Html$Events$onSubmit(author$project$Home$ConfirmEmail)
-									]),
-								_List_fromArray(
-									[
-										A2(
-										elm$html$Html$input,
-										_List_fromArray(
-											[
-												elm$html$Html$Attributes$class('overlay-input themed'),
-												elm$html$Html$Attributes$value(email),
-												elm$html$Html$Events$onInput(author$project$Home$UpdateEmail),
-												elm$html$Html$Attributes$placeholder('deine@tolle.email'),
-												elm$html$Html$Attributes$autofocus(true),
-												elm$html$Html$Attributes$autocomplete(true),
-												elm$html$Html$Attributes$type_('email')
-											]),
-										_List_Nil),
-										A2(
-										elm$html$Html$button,
-										_List_fromArray(
-											[
-												elm$html$Html$Attributes$class('overlay-btn themed')
-											]),
-										_List_fromArray(
-											[
-												elm$html$Html$text('Yay!')
-											]))
-									])),
-								function () {
-								if (maybeerr.$ === 'Just') {
-									var err = maybeerr.a;
-									return A2(
-										elm$html$Html$span,
-										_List_fromArray(
-											[
-												elm$html$Html$Attributes$class('overlay-err')
-											]),
-										_List_fromArray(
-											[
-												elm$html$Html$text(err)
-											]));
-								} else {
-									return elm$html$Html$text('');
-								}
-							}()
-							]))
-					]));
-		} else {
-			return elm$html$Html$text('');
+										elm$html$Html$text('Möchtest du, wenn beim Kurs per email an ' + (email + ' benachrichtigt werden?'))
+									]))
+							]));
+				} else {
+					return A2(
+						overlay,
+						_List_fromArray(
+							[
+								elm$html$Html$text('Fehler')
+							]),
+						_List_fromArray(
+							[
+								elm$html$Html$text('das hätte nicht passieren dürfen.')
+							]));
+				}
+			case 'DeleteoverlayVisible':
+				var email = ostate.a;
+				var maybeerr = ostate.b;
+				return A2(
+					overlay,
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$h2,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-title')
+								]),
+							_List_fromArray(
+								[
+									elm$html$Html$text('Bist du sicher?')
+								]))
+						]),
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$p,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-body-text')
+								]),
+							_List_fromArray(
+								[
+									elm$html$Html$text('Möchtest du wirklich alle Einträge für ' + (email + ' löschen?'))
+								])),
+							A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-body-buttons')
+								]),
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$button,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(author$project$Home$HideOverlay),
+											elm$html$Html$Attributes$class('themed secondary')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Abbrechen')
+										])),
+									A2(
+									elm$html$Html$button,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(
+											author$project$Home$ConfirmDelete(email)),
+											elm$html$Html$Attributes$class('themed primary red')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Löschen')
+										]))
+								])),
+							function () {
+							if (maybeerr.$ === 'Just') {
+								var err = maybeerr.a;
+								return A2(
+									elm$html$Html$p,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-body-error')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text(err)
+										]));
+							} else {
+								return elm$html$Html$text('');
+							}
+						}()
+						]));
+			default:
+				var msg = ostate.a;
+				return A2(
+					elm$html$Html$div,
+					_List_fromArray(
+						[
+							elm$html$Html$Attributes$class('oflwrap overlay-wrapper')
+						]),
+					_List_fromArray(
+						[
+							A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-window'),
+									A2(
+									elm$html$Html$Events$stopPropagationOn,
+									'click',
+									elm$json$Json$Decode$succeed(
+										_Utils_Tuple2(author$project$Home$NoOp, false)))
+								]),
+							_List_fromArray(
+								[
+									A2(
+									elm$html$Html$p,
+									_List_fromArray(
+										[
+											elm$html$Html$Attributes$class('overlay-body-text')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text(msg)
+										])),
+									A2(
+									elm$html$Html$button,
+									_List_fromArray(
+										[
+											elm$html$Html$Events$onClick(author$project$Home$HideOverlay),
+											elm$html$Html$Attributes$class('themed primary')
+										]),
+									_List_fromArray(
+										[
+											elm$html$Html$text('Okay')
+										]))
+								])),
+							A2(
+							elm$html$Html$div,
+							_List_fromArray(
+								[
+									elm$html$Html$Attributes$class('overlay-bg'),
+									elm$html$Html$Events$onClick(author$project$Home$HideOverlay)
+								]),
+							_List_Nil)
+						]));
 		}
 	});
 var author$project$Home$view = function (model) {
@@ -6888,223 +7844,10 @@ var author$project$Home$view = function (model) {
 						_List_fromArray(
 							[
 								A2(author$project$Home$viewHead, true, model.login),
-								author$project$Home$viewBody(model.state)
+								A3(author$project$Home$viewBody, model.login, model.state, model.showMore)
 							]))
 					]))
 			]));
-};
-var elm$browser$Browser$External = function (a) {
-	return {$: 'External', a: a};
-};
-var elm$browser$Browser$Internal = function (a) {
-	return {$: 'Internal', a: a};
-};
-var elm$browser$Browser$Dom$NotFound = function (a) {
-	return {$: 'NotFound', a: a};
-};
-var elm$core$Basics$never = function (_n0) {
-	never:
-	while (true) {
-		var nvr = _n0.a;
-		var $temp$_n0 = nvr;
-		_n0 = $temp$_n0;
-		continue never;
-	}
-};
-var elm$core$Task$Perform = function (a) {
-	return {$: 'Perform', a: a};
-};
-var elm$core$Task$init = elm$core$Task$succeed(_Utils_Tuple0);
-var elm$core$List$map = F2(
-	function (f, xs) {
-		return A3(
-			elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					return A2(
-						elm$core$List$cons,
-						f(x),
-						acc);
-				}),
-			_List_Nil,
-			xs);
-	});
-var elm$core$Task$map = F2(
-	function (func, taskA) {
-		return A2(
-			elm$core$Task$andThen,
-			function (a) {
-				return elm$core$Task$succeed(
-					func(a));
-			},
-			taskA);
-	});
-var elm$core$Task$spawnCmd = F2(
-	function (router, _n0) {
-		var task = _n0.a;
-		return _Scheduler_spawn(
-			A2(
-				elm$core$Task$andThen,
-				elm$core$Platform$sendToApp(router),
-				task));
-	});
-var elm$core$Task$onEffects = F3(
-	function (router, commands, state) {
-		return A2(
-			elm$core$Task$map,
-			function (_n0) {
-				return _Utils_Tuple0;
-			},
-			elm$core$Task$sequence(
-				A2(
-					elm$core$List$map,
-					elm$core$Task$spawnCmd(router),
-					commands)));
-	});
-var elm$core$Task$onSelfMsg = F3(
-	function (_n0, _n1, _n2) {
-		return elm$core$Task$succeed(_Utils_Tuple0);
-	});
-var elm$core$Task$cmdMap = F2(
-	function (tagger, _n0) {
-		var task = _n0.a;
-		return elm$core$Task$Perform(
-			A2(elm$core$Task$map, tagger, task));
-	});
-_Platform_effectManagers['Task'] = _Platform_createManager(elm$core$Task$init, elm$core$Task$onEffects, elm$core$Task$onSelfMsg, elm$core$Task$cmdMap);
-var elm$core$Task$command = _Platform_leaf('Task');
-var elm$core$Task$perform = F2(
-	function (toMessage, task) {
-		return elm$core$Task$command(
-			elm$core$Task$Perform(
-				A2(elm$core$Task$map, toMessage, task)));
-	});
-var elm$core$String$slice = _String_slice;
-var elm$core$String$dropLeft = F2(
-	function (n, string) {
-		return (n < 1) ? string : A3(
-			elm$core$String$slice,
-			n,
-			elm$core$String$length(string),
-			string);
-	});
-var elm$core$String$startsWith = _String_startsWith;
-var elm$url$Url$Http = {$: 'Http'};
-var elm$url$Url$Https = {$: 'Https'};
-var elm$core$String$indexes = _String_indexes;
-var elm$core$String$isEmpty = function (string) {
-	return string === '';
-};
-var elm$core$String$left = F2(
-	function (n, string) {
-		return (n < 1) ? '' : A3(elm$core$String$slice, 0, n, string);
-	});
-var elm$core$String$toInt = _String_toInt;
-var elm$url$Url$Url = F6(
-	function (protocol, host, port_, path, query, fragment) {
-		return {fragment: fragment, host: host, path: path, port_: port_, protocol: protocol, query: query};
-	});
-var elm$url$Url$chompBeforePath = F5(
-	function (protocol, path, params, frag, str) {
-		if (elm$core$String$isEmpty(str) || A2(elm$core$String$contains, '@', str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, ':', str);
-			if (!_n0.b) {
-				return elm$core$Maybe$Just(
-					A6(elm$url$Url$Url, protocol, str, elm$core$Maybe$Nothing, path, params, frag));
-			} else {
-				if (!_n0.b.b) {
-					var i = _n0.a;
-					var _n1 = elm$core$String$toInt(
-						A2(elm$core$String$dropLeft, i + 1, str));
-					if (_n1.$ === 'Nothing') {
-						return elm$core$Maybe$Nothing;
-					} else {
-						var port_ = _n1;
-						return elm$core$Maybe$Just(
-							A6(
-								elm$url$Url$Url,
-								protocol,
-								A2(elm$core$String$left, i, str),
-								port_,
-								path,
-								params,
-								frag));
-					}
-				} else {
-					return elm$core$Maybe$Nothing;
-				}
-			}
-		}
-	});
-var elm$url$Url$chompBeforeQuery = F4(
-	function (protocol, params, frag, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '/', str);
-			if (!_n0.b) {
-				return A5(elm$url$Url$chompBeforePath, protocol, '/', params, frag, str);
-			} else {
-				var i = _n0.a;
-				return A5(
-					elm$url$Url$chompBeforePath,
-					protocol,
-					A2(elm$core$String$dropLeft, i, str),
-					params,
-					frag,
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$chompBeforeFragment = F3(
-	function (protocol, frag, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '?', str);
-			if (!_n0.b) {
-				return A4(elm$url$Url$chompBeforeQuery, protocol, elm$core$Maybe$Nothing, frag, str);
-			} else {
-				var i = _n0.a;
-				return A4(
-					elm$url$Url$chompBeforeQuery,
-					protocol,
-					elm$core$Maybe$Just(
-						A2(elm$core$String$dropLeft, i + 1, str)),
-					frag,
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$chompAfterProtocol = F2(
-	function (protocol, str) {
-		if (elm$core$String$isEmpty(str)) {
-			return elm$core$Maybe$Nothing;
-		} else {
-			var _n0 = A2(elm$core$String$indexes, '#', str);
-			if (!_n0.b) {
-				return A3(elm$url$Url$chompBeforeFragment, protocol, elm$core$Maybe$Nothing, str);
-			} else {
-				var i = _n0.a;
-				return A3(
-					elm$url$Url$chompBeforeFragment,
-					protocol,
-					elm$core$Maybe$Just(
-						A2(elm$core$String$dropLeft, i + 1, str)),
-					A2(elm$core$String$left, i, str));
-			}
-		}
-	});
-var elm$url$Url$fromString = function (str) {
-	return A2(elm$core$String$startsWith, 'http://', str) ? A2(
-		elm$url$Url$chompAfterProtocol,
-		elm$url$Url$Http,
-		A2(elm$core$String$dropLeft, 7, str)) : (A2(elm$core$String$startsWith, 'https://', str) ? A2(
-		elm$url$Url$chompAfterProtocol,
-		elm$url$Url$Https,
-		A2(elm$core$String$dropLeft, 8, str)) : elm$core$Maybe$Nothing);
 };
 var elm$browser$Browser$document = _Browser_document;
 var elm$core$Platform$Sub$batch = _Platform_batch;

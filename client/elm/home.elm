@@ -2,23 +2,35 @@ module Home exposing (Model, Msg(..), init, main, update, view, viewHead)
 
 import Array exposing (Array)
 import Browser
+import Browser.Dom as Dom
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Decode as D exposing (Decoder)
+import Json.Decode.Extra as D
 import Json.Encode as E
+import Task
 
 
 type Msg
     = UpdateQuery String
     | PerformSearch
+    | GetExamples
     | GotSearchResults (Result Http.Error (Array Searchres))
+    | PostedWatch Int (Result Http.Error ())
+    | PostedUnwatch Int (Result Http.Error ())
     | Togglewatch Int
     | UpdateEmail String
     | ConfirmEmail
-    | ShowOverlay (Maybe String)
+    | Logout
+    | ShowOverlay (Maybe String) -- is optional error string
     | HideOverlay
+    | ToggleMore
+    | ToggleDeleteOverlay String
+    | ConfirmDelete String
+    | DeletedRecords String (Result Http.Error ())
+    | NoOp
 
 
 
@@ -31,11 +43,15 @@ type alias Model =
     , login : LoginState
     , overlay : OverlayState
     , selectedCourse : Maybe Int
+    , showMore : Bool
     }
 
 
 type OverlayState
-    = OverlayVisible String (Maybe String)
+    = EmailoverlayVisible String (Maybe String)
+    | CourseconfirmoverlayVisible Int
+    | DeleteoverlayVisible String (Maybe String)
+    | MessageoverlayVisible String
     | OverlayHidden
 
 
@@ -59,14 +75,15 @@ type alias Searchres =
     { id : String
     , name : String
     , link : String
-
-    -- , timefrom : String
     , time : String
     , places : Places
-
-    -- , watching : Bool
     , state : Sresstate
     }
+
+
+
+-- , watching : Bool
+-- , timefrom : String
 
 
 type Sresstate
@@ -101,6 +118,7 @@ init () =
       , login = Guest
       , selectedCourse = Nothing
       , overlay = OverlayHidden
+      , showMore = False
       }
     , getExamples
     )
@@ -118,7 +136,7 @@ view model =
         [ viewOverlay model.overlay model.login
         , div [ class "wrapper oflwrap" ]
             [ div [ class "innerwrapper oflwrap" ]
-                [ viewHead True model.login, viewBody model.state ]
+                [ viewHead True model.login, viewBody model.login model.state model.showMore ]
             ]
         ]
 
@@ -130,7 +148,7 @@ viewHead showExplaination login =
             case login of
                 LoggedIn email ->
                     [ span [ class "fade-msg" ] [ text "Eingeloggt!" ]
-                    , span [ class "email", title "Ausloggen" ]
+                    , span [ class "email", title "Ausloggen", onClick Logout ]
                         [ i [ class "fas fa-sign-out-alt" ] []
                         , text email
                         ]
@@ -140,9 +158,11 @@ viewHead showExplaination login =
                     [ span [ class "login-link", onClick (ShowOverlay Nothing) ] [ text "Login" ] ]
     in
     div [ class "head" ]
-        [ div [ class "logo" ] <|
-            [ h1 [ class "head-usi" ] [ text "USI" ]
-            , h3 [ class "head-watch" ] [ text "watch" ]
+        [ div [ class "logo-wrapper" ] <|
+            [ div [ class "logo", onClick GetExamples ]
+                [ h1 [ class "head-usi" ] [ text "USI" ]
+                , h3 [ class "head-watch" ] [ text "watch" ]
+                ]
             ]
                 ++ loggedInHtml
         , p [ class "expl-bold" ] [ text "Willkommen bei USIWatch." ]
@@ -150,12 +170,13 @@ viewHead showExplaination login =
         ]
 
 
-viewBody : LoadState -> Html Msg
-viewBody lstate =
+viewBody : LoginState -> LoadState -> Bool -> Html Msg
+viewBody loginstate loadstate showMore =
     div [ class "body" ]
         [ Html.form [ class "searchbarform", onSubmit PerformSearch ]
             [ input
                 [ class "themed"
+                , id "search-box"
                 , onInput UpdateQuery
                 , type_ "text"
                 , placeholder "Suche nach Kursname, ID ..."
@@ -165,48 +186,101 @@ viewBody lstate =
                 []
             ]
         , div [ class "searchresultswrapper" ]
-            (viewSearchresults lstate)
+            (viewSearchresults loadstate)
         , span [ class "signature" ] [ text "Filippo Orru, 2019" ]
+        , case loginstate of
+            LoggedIn email ->
+                if showMore then
+                    div [ class "more-wrapper" ]
+                        [ span [ onClick ToggleMore, class "more-btn" ] [ text "Weniger anzeigen", i [ class "fas fa-sort-up" ] [] ]
+                        , span [ onClick (ToggleDeleteOverlay email), class "delete-btn" ] [ text "Watchlist leeren / Account löschen", i [ class "fas fa-trash" ] [] ]
+                        ]
+
+                else
+                    span [ onClick ToggleMore, class "more-btn" ] [ text "Mehr anzeigen", i [ class "fas fa-sort-down" ] [] ]
+
+            _ ->
+                text ""
         ]
 
 
 viewOverlay : OverlayState -> LoginState -> Html Msg
 viewOverlay ostate lstate =
-    case ostate of
-        OverlayVisible email maybeerr ->
-            div [ class "oflwrap overlay-bg" ]
-                [ div [ class "overlay-window" ]
+    let
+        overlay head body =
+            div [ class "oflwrap overlay-wrapper" ]
+                [ div [ class "overlay-window", stopPropagationOn "click" (D.succeed ( NoOp, False )) ]
                     [ div [ class "overlay-head" ]
-                        [ h2 [ class "overlay-title" ] [ text "Kurs zur Watchlist hinzufügen" ]
-                        , span [ onClick HideOverlay, class "overlay-close hoverbtn" ] [ i [ class "fas fa-times" ] [] ]
-                        ]
-
-                    -- , hr [] []
-                    , span [ class "overlay-body" ] [ text "Wir benachrichtigen dich per Email, wenn der Kurs wieder frei wird." ]
-                    , Html.form [ onSubmit ConfirmEmail ]
-                        [ input
-                            [ class "overlay-input themed"
-                            , value email
-                            , onInput UpdateEmail
-                            , placeholder "deine@tolle.email"
-                            , autofocus True
-                            , autocomplete True
-                            , type_ "email"
-                            ]
-                            []
-                        , button [ class "overlay-btn themed" ] [ text "Yay!" ]
-                        ]
-                    , case maybeerr of
-                        Just err ->
-                            span [ class "overlay-err" ] [ text err ]
-
-                        Nothing ->
-                            text ""
+                        (head ++ [ span [ onClick HideOverlay, class "overlay-close hoverbtn" ] [ i [ class "fas fa-times" ] [] ] ])
+                    , div [ class "overlay-body" ] body
                     ]
+                , div [ class "overlay-bg", onClick HideOverlay ] []
+                ]
+    in
+    case ostate of
+        OverlayHidden ->
+            text ""
+
+        EmailoverlayVisible email maybeerr ->
+            overlay
+                [ h2 [ class "overlay-title" ] [ text "Kurs zur Watchlist hinzufügen" ] ]
+                [ text "Über welche Email möchtest du benachrichtigt werden?"
+                , Html.form [ onSubmit ConfirmEmail ]
+                    [ input
+                        [ class "overlay-input themed"
+                        , id "email-box"
+                        , value email
+                        , onInput UpdateEmail
+                        , placeholder "deine@tolle.email"
+                        , autofocus True
+                        , autocomplete True
+                        , type_ "email"
+                        ]
+                        []
+                    , button [ class "overlay-btn themed" ] [ text "Yay!" ]
+                    ]
+                , case maybeerr of
+                    Just err ->
+                        span [ class "overlay-err" ] [ text err ]
+
+                    Nothing ->
+                        text ""
                 ]
 
-        _ ->
-            text ""
+        CourseconfirmoverlayVisible index ->
+            case lstate of
+                LoggedIn email ->
+                    overlay
+                        [ h2 [ class "overlay-title" ] [ text "Bestätige" ] ]
+                        [ p [ class "overlay-body-text" ] [ text <| "Möchtest du, wenn beim Kurs per email an " ++ email ++ " benachrichtigt werden?" ] ]
+
+                _ ->
+                    overlay [ text "Fehler" ] [ text "das hätte nicht passieren dürfen." ]
+
+        DeleteoverlayVisible email maybeerr ->
+            overlay
+                [ h2 [ class "overlay-title" ] [ text "Bist du sicher?" ] ]
+                [ p [ class "overlay-body-text" ] [ text <| "Möchtest du wirklich alle Einträge für " ++ email ++ " löschen?" ]
+                , div [ class "overlay-body-buttons" ]
+                    [ button [ onClick HideOverlay, class "themed secondary" ] [ text "Abbrechen" ]
+                    , button [ onClick (ConfirmDelete email), class "themed primary red" ] [ text "Löschen" ]
+                    ]
+                , case maybeerr of
+                    Just err ->
+                        p [ class "overlay-body-error" ] [ text err ]
+
+                    Nothing ->
+                        text ""
+                ]
+
+        MessageoverlayVisible msg ->
+            div [ class "oflwrap overlay-wrapper" ]
+                [ div [ class "overlay-window", stopPropagationOn "click" (D.succeed ( NoOp, False )) ]
+                    [ p [ class "overlay-body-text" ] [ text msg ]
+                    , button [ onClick HideOverlay, class "themed primary" ] [ text "Okay" ]
+                    ]
+                , div [ class "overlay-bg", onClick HideOverlay ] []
+                ]
 
 
 viewSearchresults : LoadState -> List (Html Msg)
@@ -241,23 +315,23 @@ viewResult index sresult =
         linkAtt =
             [ rel "noopener", target "_blank", href <| "https://" ++ sresult.link ]
 
-        resultbtn title_ faclass =
-            a [ onClick (Togglewatch index), class "result-btn", title title_ ] [ i [ class <| "result-btn-icon " ++ faclass ] [] ]
+        resultbtn action title_ faclass =
+            a (action ++ [ class "result-btn", title title_ ]) [ i [ class <| "result-btn-icon " ++ faclass ] [] ]
 
         actionBtn =
             if sresult.places.free == 0 then
                 case sresult.state of
                     Sresselected ->
-                        resultbtn "Von Watchlist entfernen" "far fa-minus-square"
+                        resultbtn [ onClick <| Togglewatch index ] "Von Watchlist entfernen" "fas fa-bell"
 
                     Sresunselected ->
-                        resultbtn "Zur Watchlist hinzufügen" "far fa-plus-square"
+                        resultbtn [ onClick <| Togglewatch index ] "Zur Watchlist hinzufügen" "far fa-bell"
 
                     Sresload ->
-                        resultbtn "" "fas fa-spinner"
+                        resultbtn [] "" "fas fa-spinner"
 
                     Sreserror err ->
-                        resultbtn "Fehler!" "fas fa-times"
+                        resultbtn [ onClick <| Togglewatch index ] "Fehler!" "fas fa-times"
 
             else
                 a (linkAtt ++ [ class "result-btn" ]) <| [ i [ class "result-btn-icon fas fa-chevron-right" ] [] ]
@@ -291,12 +365,28 @@ viewResult index sresult =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        cmdnone m =
+            ( m, Cmd.none )
+    in
     case msg of
         UpdateQuery query ->
             ( { model | query = query }, Cmd.none )
 
         PerformSearch ->
-            ( { model | state = LBusy }, performsearch model.query )
+            if String.length model.query == 0 then
+                update GetExamples model
+
+            else
+                case model.login of
+                    LoggedIn email ->
+                        ( { model | state = LBusy }, performsearch model.query (Just email) )
+
+                    _ ->
+                        ( { model | state = LBusy }, performsearch model.query Nothing )
+
+        GetExamples ->
+            ( model, getExamples )
 
         GotSearchResults result ->
             case result of
@@ -307,19 +397,40 @@ update msg model =
                     ( { model | state = LErr err }, Cmd.none )
 
         UpdateEmail email ->
-            ( { model | overlay = OverlayVisible email Nothing }, Cmd.none )
+            ( { model | overlay = EmailoverlayVisible email Nothing }, Cmd.none )
 
         ConfirmEmail ->
             case model.overlay of
-                OverlayVisible email _ ->
+                EmailoverlayVisible email _ ->
                     if validEmail email then
-                        ( { model | login = LoggedIn email, overlay = OverlayHidden }, Cmd.none )
+                        case model.selectedCourse of
+                            Just index ->
+                                let
+                                    ( tglModel, tglCmd ) =
+                                        update HideOverlay { model | login = LoggedIn email, selectedCourse = Nothing }
+                                            |> Tuple.first
+                                            |> update GetExamples
+                                            |> Tuple.first
+                                            |> update (Togglewatch index)
+
+                                    message =
+                                        "Der Kurs wurde zur Watchlist hinzugefügt. Du wirst benachrichtigt, wenn ein Platz frei wird."
+                                in
+                                ( { tglModel | overlay = MessageoverlayVisible message }, tglCmd )
+
+                            Nothing ->
+                                update GetExamples  { model | login = LoggedIn email }
+                                    |> Tuple.first
+                                    |> update HideOverlay
 
                     else
                         update (ShowOverlay (Just "Keine gültige Email!")) model
 
                 _ ->
                     ( model, Cmd.none )
+
+        Logout ->
+            cmdnone { model | login = Guest, selectedCourse = Nothing }
 
         Togglewatch index ->
             case model.login of
@@ -328,46 +439,126 @@ update msg model =
                         LSuccess sres ->
                             case Array.get index sres of
                                 Just res ->
-                                    let
-                                        newres =
-                                            if res.state == Sresunselected then
-                                                { res | state = Sresselected }
+                                    case res.state of
+                                        Sresunselected ->
+                                            if res.places.free == 0 then
+                                                toggleWatchRes postWatch model email sres index res
 
                                             else
-                                                { res | state = Sresunselected }
+                                                cmdnone model
 
-                                        newsres =
-                                            Array.set index newres sres
+                                        Sresselected ->
+                                            toggleWatchRes postUnwatch model email sres index res
 
-                                        -- |> Debug.log "newsres pressed btn"
-                                    in
-                                    ( { model | state = LSuccess newsres }, Cmd.none )
+                                        Sreserror _ ->
+                                            let
+                                                newsres =
+                                                    Array.set index { res | state = Sresunselected } sres
+                                            in
+                                            cmdnone { model | state = LSuccess newsres }
+
+                                        Sresload ->
+                                            cmdnone model
 
                                 _ ->
-                                    ( model, Cmd.none )
+                                    cmdnone model
 
                         _ ->
-                            ( model, Cmd.none )
+                            cmdnone model
 
                 Guest ->
                     update (ShowOverlay Nothing) { model | selectedCourse = Just index }
 
+        PostedWatch index result ->
+            case model.state of
+                LSuccess resarr ->
+                    case Array.get index resarr of
+                        Just sres ->
+                            let
+                                newstate =
+                                    case result of
+                                        Ok _ ->
+                                            Sresselected
+
+                                        Err e ->
+                                            Sreserror e
+
+                                newresarr =
+                                    Array.set index { sres | state = newstate } resarr
+                            in
+                            cmdnone { model | state = LSuccess newresarr }
+
+                        _ ->
+                            cmdnone model
+
+                _ ->
+                    cmdnone model
+
+        PostedUnwatch index result ->
+            case model.state of
+                LSuccess resarr ->
+                    case Array.get index resarr of
+                        Just sres ->
+                            let
+                                newstate =
+                                    case result of
+                                        Ok _ ->
+                                            Sresunselected
+
+                                        Err e ->
+                                            Sreserror e
+
+                                newresarr =
+                                    Array.set index { sres | state = newstate } resarr
+                            in
+                            cmdnone { model | state = LSuccess newresarr }
+
+                        _ ->
+                            cmdnone model
+
+                _ ->
+                    cmdnone model
+
         ShowOverlay mbs ->
-            ( { model | overlay = OverlayVisible "" mbs }, Cmd.none )
+            ( { model | overlay = EmailoverlayVisible "" mbs }, Task.attempt (\_ -> NoOp) (Dom.focus "email-box") )
 
         HideOverlay ->
-            ( { model | overlay = OverlayHidden }, Cmd.none )
+            ( { model | overlay = OverlayHidden }, Task.attempt (\_ -> NoOp) (Dom.focus "search-box") )
+
+        ToggleMore ->
+            ( { model | showMore = not model.showMore }, Cmd.none )
+
+        ToggleDeleteOverlay email ->
+            ( { model | overlay = DeleteoverlayVisible email Nothing }, Cmd.none )
+
+        ConfirmDelete email ->
+            ( model, deleteRecords email )
+
+        DeletedRecords email result ->
+            case result of
+                Ok _ ->
+                    update GetExamples { model | login = Guest, overlay = OverlayHidden }
+
+                Err _ ->
+                    cmdnone { model | login = Guest, overlay = DeleteoverlayVisible email (Just "Konnte Account nicht löschen. Probiere es später erneut") }
+
+        NoOp ->
+            cmdnone model
 
 
+toggleWatchRes : (String -> Searchres -> Int -> Cmd Msg) -> Model -> String -> Array Searchres -> Int -> Searchres -> ( Model, Cmd Msg )
+toggleWatchRes cmd model email sres index res =
+    let
+        newres =
+            { res | state = Sresload }
 
--- GotExamples result ->
---     case result of
---         Ok arr ->
---             ({model | state = LSuccess arr }, Cmd.none )
---         Err err ->
---             ({ model | state = LErr err}, Cmd.none)
+        newsres =
+            Array.set index newres sres
+    in
+    ( { model | state = LSuccess newsres }, cmd email newres index )
 
 
+getExamples : Cmd Msg
 getExamples =
     Http.get
         { url = "/api/examples"
@@ -375,12 +566,59 @@ getExamples =
         }
 
 
-performsearch query =
-    Http.get
-        { url = "/api/search/" ++ query
+performsearch : String -> Maybe String -> Cmd Msg
+performsearch query maybeemail =
+    case maybeemail of
+        Just email ->
+            Http.request
+                { method = "POST"
+                , headers = []
+                , url = "/api/search/" ++ query
+                , body = Http.jsonBody <| E.object [ ( "email", E.string email ) ]
+                , expect = Http.expectJson GotSearchResults decodeSearchresults
+                , timeout = Nothing
+                , tracker = Nothing
+                }
 
-        -- https://usionline.uni-graz.at/usiweb/myusi.kurse?suche_in=go&sem_id_in=2019W&kursnr_in="
-        , expect = Http.expectJson GotSearchResults decodeSearchresults
+        Nothing ->
+            Http.get
+                { url = "/api/search/" ++ query
+                , expect = Http.expectJson GotSearchResults decodeSearchresults
+                }
+
+
+postWatch : String -> Searchres -> Int -> Cmd Msg
+postWatch email result index =
+    Http.post
+        { url = "/api/watch"
+        , body = Http.jsonBody (encodeResult email result)
+        , expect = Http.expectWhatever (PostedWatch <| index)
+        }
+
+
+postUnwatch : String -> Searchres -> Int -> Cmd Msg
+postUnwatch email result index =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/watch"
+        , body = Http.jsonBody (encodeResult email result)
+        , expect = Http.expectWhatever (PostedUnwatch <| index)
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+deleteRecords : String -> Cmd Msg
+deleteRecords email =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/watching"
+        , body = Http.jsonBody (E.object [ ( "email", E.string email ) ])
+        , expect = Http.expectWhatever (DeletedRecords email)
+        , timeout = Nothing
+        , tracker = Nothing
         }
 
 
@@ -403,9 +641,22 @@ decodeSearchresults =
             (D.field "time" D.string)
             -- (D.field "to" D.string)
             (D.field "places" decodePlaces)
-            -- (D.succeed False)
-            (D.succeed Sresunselected)
+            (D.withDefault Sresunselected (D.field "watching" decodeWatching))
+         -- (D.succeed False)
         )
+
+
+decodeWatching : D.Decoder Sresstate
+decodeWatching =
+    D.bool
+        |> D.andThen
+            (\b ->
+                if b then
+                    D.succeed Sresselected
+
+                else
+                    D.succeed Sresunselected
+            )
 
 
 decodePlaces : Decoder Places
@@ -414,14 +665,17 @@ decodePlaces =
         (D.field "free" D.int)
 
 
+encodeResult : String -> Searchres -> E.Value
+encodeResult email res =
+    E.object
+        [ ( "email", E.string email )
+        , ( "id", E.string res.id )
+        ]
+
+
 
 -- (D.field "total" D.int)
 
 
 validEmail email =
     String.contains "@" email && String.length email /= 0 && String.contains "." email
-
-
-
--- _ ->
---     ( model, Cmd.none )

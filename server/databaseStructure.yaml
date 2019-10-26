@@ -1,0 +1,41 @@
+---
+// Database Collections
+
+watchers:
+  id:
+    type: int
+    example: 1
+  name:
+    type: string
+    example: "Filippo"
+  email:
+    type: string
+    example: "f--@outlook.com"
+  courses:
+    type: [string]
+    example: ["404", "405"]
+  verified:
+    type: bool
+    example: false
+
+courses:
+  id:
+    type: string
+    example: "405"
+  name:
+    type: string
+    example: Badminton Anfänger
+  link:
+    type: string
+    example: https://usiwatch.com/xyz.html
+  time:
+    type: string
+    example: Mi 20:00-22:00
+  places:
+    type: dict
+    children:
+      free:
+        type: int
+        example: 23
+  updated:
+    type: timestamp

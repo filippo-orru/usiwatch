@@ -1,23 +1,34 @@
 from pymongo import MongoClient, ASCENDING, DESCENDING, errors as pmgerrs
+import configparser
 
 
 class DatabaseConnection():
     _client = None
     _db = None
 
-    def __init__(self):
+    def __init__(self, path: str = 'config.ini'):
+        # if path.find('/') == -1:
+        # path = './' + path
 
         print('DEBUG: Creating new connection to database')
-        self._client = MongoClient('127.0.0.1:27017')
-        self._db = self._client.get_database('usiwatch')
 
-    # def __enter__(self):
-    #     return self
+        config = configparser.ConfigParser()
+        config.read(path)
 
-    # def __exit__(self, exec_type, exec_value, traceback):
-    #     # MongoClient().get_database()[''].find()
-    #     print('DEBUG: Closing connection to database')
-    #     self._client.close()
+        if not config or config.sections() == []:
+            raise FileNotFoundError('Could not find ' + path)
+        # print(config.sections())
+
+        url = config['Mongodb']['url']
+        database = config['Mongodb']['database']
+
+        self._client = MongoClient(url)
+        self._db = self._client.get_database(database)
+
+    def fromParams(self, address, database):
+        print('DEBUG: Creating new connection to database')
+        self._client = MongoClient(address)
+        self._db = self._client.get_database(database)
 
     def __del__(self):
         print('DEBUG: Trying to close connection to db')
@@ -30,6 +41,12 @@ class DatabaseConnection():
         except TypeError:
             print('ERROR: Failed to close connection to db')
             pass
+
+    def get_client(self, collection):
+        '''
+        returns the client for the given collection
+        '''
+        return self._db[collection]
 
     def insert_one(self, collection, mdbInput):
         '''

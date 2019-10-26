@@ -1,0 +1,4 @@
+  File "/root/code-server/project/usiwatch/server/service.py", line 58
+    watchers = 
+              ^
+SyntaxError: invalid syntax

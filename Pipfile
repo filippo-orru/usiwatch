@@ -11,6 +11,7 @@ pyquery = "*"
 pylint = "*"
 yapf = "*"
 regex = "*"
+smtplib = "*"
 
 [requires]
 python_version = "3.6"

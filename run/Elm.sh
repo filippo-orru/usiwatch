@@ -1,1 +1,2 @@
+# port=<(grep ../config.ini)
 cd client/elm && npx light-server -s ../static -p 8001 -w "**/*.elm # elm make home.elm --output=../static/main.js" -w "../static/*.css # # reloadcss" -x http://localhost:5001/ --proxypath "/api"

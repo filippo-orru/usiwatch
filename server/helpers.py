@@ -1,9 +1,9 @@
 def clearOID(res):
     if type(res) == dict:
-        res.pop('_id')
+        if '_id' in res:
+            res.pop('_id')
+
     elif type(res) == list:
-        for r in res:
-            r.pop('_id')
-    else:
-        raise TypeError('nooo why bad type??')
+        res = list(map(clearOID, res))
+
     return res

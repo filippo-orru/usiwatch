@@ -3,3 +3,4 @@ __pycache__
 .vscode
 Pipfile.lock
 elm-stuff/
+config.ini

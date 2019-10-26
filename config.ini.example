@@ -1,0 +1,19 @@
+[Lightserver]
+host=0.0.0.0
+port=8001
+
+[Flask]
+host=127.0.0.1
+port=5001
+secret=<flaskSecret>
+
+
+[Mail]
+url=https://<uname>:<pwd>@api.eu.mailgun.net/v3/<domain>/messages
+address=USI Watch <notification@<domain>
+key=<apikey>
+
+
+[Mongodb]
+url=127.0.0.1:27017
+database=usiwatch
